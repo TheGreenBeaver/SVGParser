@@ -89,6 +89,9 @@ class PathInfo(object):
                         'L': lambda x, y: self.append_point(Point(x, y)),
                         'l': lambda x, y: self.append_point_relative(Point(x, y))
                     }[last](float(spl_pt[0]), vb_height - float(spl_pt[1]))
+
+                    if last.lower() == 'm':
+                        last = ''
                 else:
                     {
                         'H': lambda x: self.append_point(Point(x, self.ended_on.y)),
@@ -96,8 +99,6 @@ class PathInfo(object):
                         'V': lambda y: self.append_point(Point(self.ended_on.x, vb_height - y)),
                         'v': lambda y: self.append_point(Point(self.ended_on.x, vb_height - (y + self.ended_on.y)))
                     }[last](float(d_pt))
-
-                last = ''
             else:
                 if d_pt.lower() == 'z':
                     self.append_point(self.points[0])
@@ -137,7 +138,7 @@ def read_svg(path_to_file, path_to_res):
     for k in res.keys():
         if not os.path.exists(path_to_res):
             os.makedirs(path_to_res)
-        res_for_class = open(f'{path_to_res}/{f_index}', 'w')
+        res_for_class = open(f'{path_to_res}/{f_index}.txt', 'w')
         f_index += 1
         points_for_class = res[k]
         for part in points_for_class:
@@ -148,4 +149,4 @@ def read_svg(path_to_file, path_to_res):
         res_for_class.close()
 
 
-read_svg('./svgSamples/testSvg.svg', 'testRes')
+read_svg('./svg/nClasses_fresh.svg', 'testRes')
