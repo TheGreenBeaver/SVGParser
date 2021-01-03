@@ -2,3 +2,6 @@ venv
 svg
 testRes*
 __pycache__
+build
+dist
+*.spec
