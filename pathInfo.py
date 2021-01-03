@@ -1,15 +1,23 @@
+import copy
 import re
 import numpy
 
 from constants import TAGS_REGEX
 from point import Point
 from transform import Transform
-from util import get_info_part
+from util import get_info_part, calc_bezier_3, print_oops
 
 
 class PathInfo(object):
 
-    def __init__(self, path_string, group_transform, style_attributes=None, ellipse_approx_lvl=5):
+    def __init__(
+            self,
+            path_string,
+            group_transform,
+            style_attributes=None,
+            ellipse_approx_lvl=5,
+            bezier_3_approx_lvl=5
+    ):
         if style_attributes is None:
             style_attributes = ['fill', 'stroke']
         self.points = []
@@ -22,7 +30,7 @@ class PathInfo(object):
         self.style = self.parse_style(get_info_part(path_string, 'style'), style_attributes)
         {
             path_string.startswith('rect'): lambda: self.process_rect(path_string),
-            path_string.startswith('path'): lambda: self.process_path(path_string),
+            path_string.startswith('path'): lambda: self.process_path(path_string, bezier_3_approx_lvl),
             path_string.startswith('ellipse'): lambda: self.process_ellipse(path_string, ellipse_approx_lvl)
         }[True]()
 
@@ -41,6 +49,11 @@ class PathInfo(object):
             pt = self.points[pt_idx]
             if pt is not None:
                 transformed_pt = full_transform_obj.apply(pt)
+
+                if type(transformed_pt) == str:
+                    self.oops(transformed_pt)
+                    break
+
                 self.points[pt_idx] = transformed_pt
 
                 if self.max_y is None or self.max_y < transformed_pt.y:
@@ -118,13 +131,12 @@ class PathInfo(object):
             return [None, None]
         return [float(spl_pt[0]), float(spl_pt[1])]
 
-    def oops(self, tag_name):
+    def oops(self, reason):
         self.not_implemented = True
         self.points = []
         self.max_y = None
         self.max_x = None
-        print(f'Sorry! This app can\'t yet process the {tag_name} tag (in path {self.path_id}).'
-              f' We are open for your suggestions!')
+        print_oops(reason, self.path_id)
 
     def append_point(self, x, y, relative=False, move=False):
         if relative:
@@ -139,14 +151,28 @@ class PathInfo(object):
         self.ended_on.x = x
         self.ended_on.y = y
 
-    # ------------------------
+    def process_bezier_3(self, points, bezier_3_approx_lvl, relative=False):
+        batch_index = 0
+        while batch_index + 2 < len(points):
+            batch = [numpy.array(self.get_xy(pt_str)) for pt_str in points[batch_index:batch_index + 3]]
+            start_pt = numpy.array([self.ended_on.x, self.ended_on.y])
+            if relative:
+                for i in range(len(batch)):
+                    batch[i] += start_pt
+            t_arr = list(numpy.linspace(0, 1, bezier_3_approx_lvl))[1:-1]
+            breakpoints = [calc_bezier_3(start_pt, batch, t) for t in t_arr]
+            self.points.extend([Point(bp[0], bp[1]) for bp in breakpoints])
+            last_pt = Point(batch[2][0], batch[2][1])
+            self.points.append(last_pt)
+            self.ended_on = copy.copy(last_pt)
+            batch_index += 3
 
     def go_through_points(self, pt_list, relative):
         for pt in pt_list:
             [x, y] = self.get_xy(pt)
             self.append_point(x, y, relative=relative)
 
-    def process_path(self, path_string):
+    def process_path(self, path_string, bezier_3_approx_lvl):
         d = get_info_part(path_string, ' d')
         split_by_tag_names = re.split(TAGS_REGEX, f' {d}')[1:]  # Skip an empty string at the start
         tags_amount = len(split_by_tag_names)
@@ -167,8 +193,9 @@ class PathInfo(object):
                 tag_name = whole_tag_split[0]
                 unified_tag_name = tag_name.lower()
 
-                if unified_tag_name == 'z' and self.points[-1] != self.return_after_z:
-                    self.append_point(self.return_after_z.x, self.return_after_z.y)
+                if unified_tag_name == 'z':
+                    if self.points[-1] != self.return_after_z:
+                        self.append_point(self.return_after_z.x, self.return_after_z.y)
                     continue
 
                 points_in_tag = whole_tag_split[1:]
@@ -193,16 +220,16 @@ class PathInfo(object):
                     'h': lambda: self.go_through_points([f'{pt_x},0.0' for pt_x in points_in_tag], relative=True),
                     'L': lambda: self.go_through_points(points_in_tag, relative=False),
                     'l': lambda: self.go_through_points(points_in_tag, relative=True),
-                    'C': lambda: self.oops('C'),
-                    'c': lambda: self.oops('c'),
-                    'S': lambda: self.oops('S'),
-                    's': lambda: self.oops('s'),
-                    'Q': lambda: self.oops('Q'),
-                    'q': lambda: self.oops('q'),
-                    'T': lambda: self.oops('T'),
-                    't': lambda: self.oops('t'),
-                    'A': lambda: self.oops('A'),
-                    'a': lambda: self.oops('a')
+                    'C': lambda: self.process_bezier_3(points_in_tag, bezier_3_approx_lvl),
+                    'c': lambda: self.process_bezier_3(points_in_tag, bezier_3_approx_lvl, True),
+                    'S': lambda: self.oops('S tag'),
+                    's': lambda: self.oops('s tag'),
+                    'Q': lambda: self.oops('Q tag'),
+                    'q': lambda: self.oops('q tag'),
+                    'T': lambda: self.oops('T tag'),
+                    't': lambda: self.oops('t tag'),
+                    'A': lambda: self.oops('A tag'),
+                    'a': lambda: self.oops('a tag')
                 }[tag_name]()
 
                 if self.not_implemented:

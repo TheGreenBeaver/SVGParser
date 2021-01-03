@@ -6,8 +6,15 @@ from pathInfo import PathInfo
 from util import get_info_part
 
 
-def read_svg(path_to_file, path_to_res, bottom_left=True,
-             normalize=True, style_attributes=None, ellipse_approx_lvl=5):
+def read_svg(
+        path_to_file,
+        path_to_res,
+        bottom_left=True,
+        normalize=True,
+        style_attributes=None,
+        ellipse_approx_lvl=5,
+        bezier_3_approx_lvl=5
+):
     if style_attributes is None:
         style_attributes = ['fill', 'stroke']
 
@@ -35,7 +42,9 @@ def read_svg(path_to_file, path_to_res, bottom_left=True,
             path,
             group_transform,
             style_attributes=style_attributes,
-            ellipse_approx_lvl=ellipse_approx_lvl)
+            ellipse_approx_lvl=ellipse_approx_lvl,
+            bezier_3_approx_lvl=bezier_3_approx_lvl
+        )
         n_max_y = path_info.max_y
         n_max_x = path_info.max_x
 

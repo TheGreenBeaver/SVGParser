@@ -9,15 +9,22 @@ class Transform(object):
     def __init__(self, full_transform_str):
         self.transform_values = []
         self.transform_types = []
+        self.not_implemented = None
         spl_transform = list(filter(lambda t_str: len(t_str) > 0, re.split(BRACKETS_REGEX, full_transform_str)))
         for t_idx in range(0, len(spl_transform), 2):
             transform_type = re.sub(NOT_WORD_REGEX, '', spl_transform[t_idx])
             self.transform_types.append(transform_type)
             self.transform_values.append(
                 {
-                    'matrix': lambda matrix_str: self.get_matrix_from_str(matrix_str),
-                    'translate': lambda translation_str: self.get_translation_from_str(translation_str)
-                }[transform_type](spl_transform[t_idx + 1]))
+                    'matrix': lambda: self.get_matrix_from_str(spl_transform[t_idx + 1]),
+                    'translate': lambda: self.get_translation_from_str(spl_transform[t_idx + 1]),
+                    'rotate': lambda: self.oops('rotate')
+                }[transform_type]())
+            if self.not_implemented is not None:
+                break
+
+    def oops(self, transform_type):
+        self.not_implemented = f'{transform_type} transform'
 
     @staticmethod
     def get_translation_from_str(translation_str):
@@ -45,6 +52,10 @@ class Transform(object):
         return [point.x + translation[0], point.y + translation[1]]
 
     def apply(self, point):
+
+        if self.not_implemented is not None:
+            return self.not_implemented
+
         point_copy = copy.copy(point)
         for transform_idx in range(len(self.transform_types)):
             transform_type = self.transform_types[transform_idx]
