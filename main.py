@@ -18,9 +18,11 @@ parser.add_argument('--style_attr', nargs='*', default=['fill', 'stroke'], dest=
 parser.add_argument('--ell_approx', default=5, type=int, dest='ellipse_approx_lvl',
                     help='The amount of points to be calculated for each arc of an ellipse (default: 5)')
 parser.add_argument('--b3_approx', default=5, type=int, dest='bezier_3_approx_lvl',
-                    help='The amount of points to approximate the 3-order Bezier curves (default: 5)')
+                    help='The amount of points to approximate the 3-order Bezier curves (default: 8)')
+parser.add_argument('--b2_approx', default=5, type=int, dest='bezier_2_approx_lvl',
+                    help='The amount of points to approximate the 2-order Bezier curves (default: 8)')
 
 args = parser.parse_args()
 
 read_svg(args.in_file, args.out_dir, args.bottom_left, args.normalize, args.style_attributes,
-         args.ellipse_approx_lvl, args.bezier_3_approx_lvl)
+         args.ellipse_approx_lvl, args.bezier_3_approx_lvl, args.bezier_2_approx_lvl)

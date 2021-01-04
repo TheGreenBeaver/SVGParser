@@ -13,7 +13,8 @@ def read_svg(
         normalize=True,
         style_attributes=None,
         ellipse_approx_lvl=5,
-        bezier_3_approx_lvl=5
+        bezier_3_approx_lvl=8,
+        bezier_2_approx_lvl=8
 ):
     if style_attributes is None:
         style_attributes = ['fill', 'stroke']
@@ -22,7 +23,7 @@ def read_svg(
     lines = svg_file.readlines()
     svg_file.close()
 
-    whole_text = ''.join(lines)
+    whole_text = ''.join(lines).replace('\'', '"')
 
     paths = re.split(PATH_DELIMITERS_REGEX, whole_text)
 
@@ -43,7 +44,8 @@ def read_svg(
             group_transform,
             style_attributes=style_attributes,
             ellipse_approx_lvl=ellipse_approx_lvl,
-            bezier_3_approx_lvl=bezier_3_approx_lvl
+            bezier_3_approx_lvl=bezier_3_approx_lvl,
+            bezier_2_approx_lvl=bezier_2_approx_lvl
         )
         n_max_y = path_info.max_y
         n_max_x = path_info.max_x
@@ -80,8 +82,9 @@ def read_svg(
                     if bottom_left:
                         fig_point.y = max_y - fig_point.y
                     if normalize:
-                        fig_point.y /= max_y
-                        fig_point.x /= max_x
+                        aspect = max(max_x, max_y)
+                        fig_point.y /= aspect
+                        fig_point.x /= aspect
 
                 to_write = 'NaN,NaN;' if fig_point is None else str(fig_point)
                 res_for_class.write(to_write)
