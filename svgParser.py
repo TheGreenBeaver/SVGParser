@@ -1,7 +1,7 @@
 import os
 import re
 
-from constants import PATH_DELIMITERS_REGEX
+from constants import PATH_DELIMITERS_REGEX, MULTIPLE_WHITESPACE_REGEX
 from pathInfo import PathInfo
 from util import get_info_part
 
@@ -23,7 +23,7 @@ def read_svg(
     lines = svg_file.readlines()
     svg_file.close()
 
-    whole_text = ''.join(lines).replace('\'', '"')
+    whole_text = re.sub(MULTIPLE_WHITESPACE_REGEX, ' ', ''.join(lines).replace('\'', '"'))
 
     paths = re.split(PATH_DELIMITERS_REGEX, whole_text)
 
