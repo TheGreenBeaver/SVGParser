@@ -5,7 +5,7 @@ import numpy
 from constants import TAGS_REGEX, WHITESPACE_REGEX
 from point import Point
 from transform import Transform
-from util import get_info_part, calc_bezier, print_oops
+from util import get_info_part, calc_bezier, print_oops, get_ellipse_points
 
 
 class PathInfo(object):
@@ -47,6 +47,7 @@ class PathInfo(object):
         if group_transform is not None:
             full_transform += f', {group_transform}'
 
+        print(full_transform)
         full_transform_obj = Transform(full_transform)
 
         for pt_idx in range(len(self.points)):
@@ -103,35 +104,7 @@ class PathInfo(object):
         cx = float(get_info_part(path_string, 'cx'))
         cy = float(get_info_part(path_string, 'cy'))
 
-        breakpoints = list(numpy.linspace(-1, 1, ellipse_approx_lvl * 2 - 1) * rx)
-        top_part = [numpy.sqrt(ry ** 2 * (1 - x ** 2 / rx ** 2)) for x in breakpoints]
-        bottom_part = [-y for y in top_part]
-
-        self.points.append(Point(-rx, 0))
-
-        for i in range(1, ellipse_approx_lvl - 1):
-            self.points.append(Point(breakpoints[i], top_part[i]))
-
-        self.points.append(Point(0, ry))
-
-        for i in range(ellipse_approx_lvl, ellipse_approx_lvl * 2 - 2):
-            self.points.append(Point(breakpoints[i], top_part[i]))
-
-        self.points.append(Point(rx, 0))
-
-        for i in range(ellipse_approx_lvl * 2 - 3, ellipse_approx_lvl - 1, -1):
-            self.points.append(Point(breakpoints[i], bottom_part[i]))
-
-        self.points.append(Point(0, -ry))
-
-        for i in range(ellipse_approx_lvl - 2, 0, -1):
-            self.points.append(Point(breakpoints[i], bottom_part[i]))
-
-        self.points.append(Point(-rx, 0))
-
-        for i in range(len(self.points)):
-            self.points[i].x += cx
-            self.points[i].y += cy
+        self.points = get_ellipse_points(rx, ry, cx, cy, ellipse_approx_lvl)
 
     @staticmethod
     def get_xy(pt_str):
