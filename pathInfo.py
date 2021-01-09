@@ -2,10 +2,10 @@ import copy
 import re
 import numpy
 
-from constants import TAGS_REGEX, WHITESPACE_REGEX
+from constants import TAGS_REGEX, SPLIT_REGEX, SMALL, LARGE
 from point import Point
 from transform import Transform
-from util import get_info_part, calc_bezier, print_oops, get_ellipse_points
+from util import get_info_part, calc_bezier, print_oops, get_ellipse_points, get_ellipse_center, get_ellipse_arcs
 
 
 class PathInfo(object):
@@ -34,7 +34,8 @@ class PathInfo(object):
             path_string.startswith('path'): lambda: self.process_path(
                 path_string,
                 bezier_3_approx_lvl,
-                bezier_2_approx_lvl),
+                bezier_2_approx_lvl,
+                ellipse_approx_lvl),
             path_string.startswith('ellipse'): lambda: self.process_ellipse(path_string, ellipse_approx_lvl)
         }[True]()
 
@@ -45,9 +46,8 @@ class PathInfo(object):
             full_transform += transform_str
 
         if group_transform is not None:
-            full_transform += f', {group_transform}'
+            full_transform += f' {group_transform}'
 
-        print(full_transform)
         full_transform_obj = Transform(full_transform)
 
         for pt_idx in range(len(self.points)):
@@ -107,11 +107,8 @@ class PathInfo(object):
         self.points = get_ellipse_points(rx, ry, cx, cy, ellipse_approx_lvl)
 
     @staticmethod
-    def get_xy(pt_str):
-        spl_pt = pt_str.split(',')
-        if len(spl_pt) == 1:
-            return [None, None]
-        return [float(spl_pt[0]), float(spl_pt[1])]
+    def get_pt_list(raw_list):
+        return [[float(raw_list[i]), float(raw_list[i + 1])] for i in range(0, len(raw_list), 2)]
 
     def oops(self, reason):
         self.not_implemented = True
@@ -133,10 +130,14 @@ class PathInfo(object):
         self.ended_on.x = x
         self.ended_on.y = y
 
+    def go_through_points(self, pt_list, relative):
+        for pt in pt_list:
+            self.append_point(pt[0], pt[1], relative=relative)
+
     def process_bezier(self, points, approx_lvl, order, relative=False):
         batch_index = 0
-        while batch_index + order - 1 < len(points):
-            batch = [numpy.array(self.get_xy(pt_str)) for pt_str in points[batch_index:batch_index + order]]
+        while batch_index + order * 2 - 1 < len(points):
+            batch = [numpy.array(pt) for pt in self.get_pt_list(points[batch_index:batch_index + order * 2])]
             start_pt = numpy.array([self.ended_on.x, self.ended_on.y])
             if relative:
                 for i in range(len(batch)):
@@ -147,14 +148,73 @@ class PathInfo(object):
             last_pt = Point(batch[order - 1][0], batch[order - 1][1])
             self.points.append(last_pt)
             self.ended_on = copy.copy(last_pt)
-            batch_index += order
+            batch_index += order * 2
 
-    def go_through_points(self, pt_list, relative):
-        for pt in pt_list:
-            [x, y] = self.get_xy(pt)
-            self.append_point(x, y, relative=relative)
+    # --- --- ---
 
-    def process_path(self, path_string, bezier_3_approx_lvl, bezier_2_approx_lvl):
+    def process_a(self, val_list, ellipse_approx_lvl, relative=False):
+        batch_index = 0
+        while batch_index + 6 < len(val_list):
+            batch = val_list[batch_index:batch_index + 7]
+
+            rx = float(batch[0])
+            ry = float(batch[1])
+
+            a_deg = float(batch[2])
+
+            large_arc_flag = batch[3]
+            sweep_flag = batch[4]
+
+            xs = self.ended_on.x
+            ys = self.ended_on.y
+            xe = float(batch[5])
+            ye = float(batch[6])
+
+            if relative:
+                xe += xs
+                ye += ys
+
+            end_pt = Point(xe, ye)
+
+            [[xc1, yc1], [xc2, yc2]] = get_ellipse_center(rx, ry, xs, ys, xe, ye, a_deg)
+
+            ellipse1_raw = get_ellipse_points(rx, ry, xc1, yc1, ellipse_approx_lvl)
+            ellipse2_raw = get_ellipse_points(rx, ry, xc2, yc2, ellipse_approx_lvl)
+
+            if a_deg != 0:
+                ellipse1_transform = Transform(f'rotate({a_deg},{xc1},{yc1}')
+                ellipse1 = [ellipse1_transform.apply(pt) for pt in ellipse1_raw]
+
+                ellipse2_transform = Transform(f'rotate({a_deg},{xc2},{yc2})')
+                ellipse2 = [ellipse2_transform.apply(pt) for pt in ellipse2_raw]
+            else:
+                ellipse1 = ellipse1_raw
+                ellipse2 = ellipse2_raw
+
+            center_pt1 = Point(xc1, yc1)
+            [small_arc1, large_arc1, non_sweep_arc1] = get_ellipse_arcs(ellipse1, center_pt1, self.ended_on, end_pt)
+
+            center_pt2 = Point(xc2, yc2)
+            [small_arc2, large_arc2, non_sweep_arc2] = get_ellipse_arcs(ellipse2, center_pt2, self.ended_on, end_pt)
+
+            # Sweep goes for positive angles (clockwise), reverse goes for negative ones (counter-clockwise)
+            small_sweep = copy.deepcopy(small_arc1 if non_sweep_arc1 != SMALL else small_arc2)
+            large_sweep = copy.deepcopy(large_arc1 if non_sweep_arc1 != LARGE else large_arc2)
+
+            small_reverse = copy.deepcopy(small_arc2 if non_sweep_arc2 == SMALL else small_arc1)
+            large_reverse = copy.deepcopy(large_arc2 if non_sweep_arc2 == LARGE else large_arc1)
+
+            self.points.extend({
+                '00': small_reverse,
+                '01': small_sweep,
+                '10': large_reverse,
+                '11': large_sweep
+            }[f'{large_arc_flag}{sweep_flag}'])
+            self.ended_on = copy.copy(end_pt)
+
+            batch_index += 7
+
+    def process_path(self, path_string, bezier_3_approx_lvl, bezier_2_approx_lvl, ellipse_approx_lvl):
         d = get_info_part(path_string, ' d')
         split_by_tag_names = re.split(TAGS_REGEX, f' {d}')[1:]  # Skip an empty string at the start
         tags_amount = len(split_by_tag_names)
@@ -171,7 +231,7 @@ class PathInfo(object):
             else:
                 whole_tag = split_by_tag_names[tag_index]
                 tag_index += 1
-                whole_tag_split = list(filter(lambda s: len(s) > 0, re.split(WHITESPACE_REGEX, whole_tag)))
+                whole_tag_split = list(filter(lambda s: len(s) > 0, re.split(SPLIT_REGEX, whole_tag)))
                 tag_name = whole_tag_split[0]
                 unified_tag_name = tag_name.lower()
 
@@ -180,38 +240,39 @@ class PathInfo(object):
                         self.append_point(self.return_after_z.x, self.return_after_z.y)
                     continue
 
-                points_in_tag = whole_tag_split[1:]
+                tag_values = whole_tag_split[1:]
 
-                if len(points_in_tag) > 1:
+                if len(tag_values) > 2 and unified_tag_name == 'm':
+                    # All the points except the first one are considered L
+                    l_without_tag_name = self.get_pt_list(tag_values[2:])
+                    tag_values = tag_values[0:2]  # The first point is the one to handle and (m)ove to
+                    was_relative = tag_name.islower()
 
-                    if unified_tag_name == 'm':
-                        l_without_tag_name = points_in_tag[1:]  # All the points except the first one are considered L
-                        points_in_tag = points_in_tag[0:1]  # The first point is the one to handle and (m)ove to
-                        was_relative = tag_name.islower()
-                    elif ['V', 'H'].count(tag_name) != 0:
-                        points_in_tag = points_in_tag[-1:]  # Only the last point matters for V and H
+                if len(tag_values) > 1 and ['V', 'H'].count(tag_name) != 0:
+                    tag_values = tag_values[-1:]  # Only the last point matters for V and H
 
-                last_pt = points_in_tag[-1]
-                [lx, ly] = self.get_xy(last_pt)
+                val1 = float(tag_values[-2]) if len(tag_values) > 1 else None
+                val2 = float(tag_values[-1])
+
                 {
-                    'M': lambda: self.append_point(lx, ly, move=True),
-                    'm': lambda: self.append_point(lx, ly, relative=True, move=True),
-                    'V': lambda: self.append_point(self.ended_on.x, float(last_pt)),
-                    'v': lambda: self.go_through_points([f'0.0,{pt_y}' for pt_y in points_in_tag], relative=True),
-                    'H': lambda: self.append_point(float(last_pt), self.ended_on.y),
-                    'h': lambda: self.go_through_points([f'{pt_x},0.0' for pt_x in points_in_tag], relative=True),
-                    'L': lambda: self.go_through_points(points_in_tag, relative=False),
-                    'l': lambda: self.go_through_points(points_in_tag, relative=True),
-                    'C': lambda: self.process_bezier(points_in_tag, bezier_3_approx_lvl, 3),
-                    'c': lambda: self.process_bezier(points_in_tag, bezier_3_approx_lvl, 3, True),
+                    'M': lambda: self.append_point(val1, val2, move=True),
+                    'm': lambda: self.append_point(val1, val2, relative=True, move=True),
+                    'V': lambda: self.append_point(self.ended_on.x, val2),
+                    'v': lambda: self.go_through_points([[0.0, float(pt_y)] for pt_y in tag_values], relative=True),
+                    'H': lambda: self.append_point(val2, self.ended_on.y),
+                    'h': lambda: self.go_through_points([[float(pt_x), 0.0] for pt_x in tag_values], relative=True),
+                    'L': lambda: self.go_through_points(self.get_pt_list(tag_values), relative=False),
+                    'l': lambda: self.go_through_points(self.get_pt_list(tag_values), relative=True),
+                    'C': lambda: self.process_bezier(tag_values, bezier_3_approx_lvl, 3),
+                    'c': lambda: self.process_bezier(tag_values, bezier_3_approx_lvl, 3, True),
                     'S': lambda: self.oops('S tag'),
                     's': lambda: self.oops('s tag'),
-                    'Q': lambda: self.process_bezier(points_in_tag, bezier_2_approx_lvl, 2),
-                    'q': lambda: self.process_bezier(points_in_tag, bezier_2_approx_lvl, 2, True),
+                    'Q': lambda: self.process_bezier(tag_values, bezier_2_approx_lvl, 2),
+                    'q': lambda: self.process_bezier(tag_values, bezier_2_approx_lvl, 2, True),
                     'T': lambda: self.oops('T tag'),
                     't': lambda: self.oops('t tag'),
-                    'A': lambda: self.oops('A tag'),
-                    'a': lambda: self.oops('a tag')
+                    'A': lambda: self.process_a(tag_values, ellipse_approx_lvl=ellipse_approx_lvl),
+                    'a': lambda: self.process_a(tag_values, ellipse_approx_lvl=ellipse_approx_lvl, relative=True)
                 }[tag_name]()
 
                 if self.not_implemented:

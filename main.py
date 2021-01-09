@@ -23,6 +23,24 @@ parser.add_argument('--b2_approx', default=8, type=int, dest='bezier_2_approx_lv
                     help='The amount of points to approximate the 2-order Bezier curves (default: 8)')
 
 args = parser.parse_args()
+args_ok = True
 
-read_svg(args.in_file, args.out_dir, args.bottom_left, args.normalize, args.style_attributes,
-         args.ellipse_approx_lvl, args.bezier_3_approx_lvl, args.bezier_2_approx_lvl)
+style_attributes = args.style_attributes
+if len(style_attributes) == 0:
+    print('You have to provide at least one style attribute for the app to separate the classes')
+    args_ok = False
+
+ellipse_approx_lvl = args.ellipse_approx_lvl
+if ellipse_approx_lvl < 3:
+    print('The ellipse approximation level cannot be lower than 3')
+    args_ok = False
+
+bezier_3_approx_lvl = args.bezier_3_approx_lvl
+bezier_2_approx_lvl = args.bezier_2_approx_lvl
+if bezier_2_approx_lvl < 1 or bezier_3_approx_lvl < 1:
+    print('The bezier curve approximation level cannot be lower than 1')
+    args_ok = False
+
+if args_ok:
+    read_svg(args.in_file, args.out_dir, args.bottom_left, args.normalize, args.style_attributes,
+             args.ellipse_approx_lvl, args.bezier_3_approx_lvl, args.bezier_2_approx_lvl)

@@ -30,18 +30,22 @@ def read_svg(
     del paths[0]  # Remove the header part of the SVG
 
     res = {}
-    group_transform = None
+    group_transform = []
     max_y = None
     max_x = None
 
     for path in paths:
         if path.startswith('g'):
-            group_transform = get_info_part(path, 'transform')
+            group_transform.insert(0, get_info_part(path, 'transform'))
+            continue
+
+        if path.startswith('/g'):
+            group_transform = group_transform[1:]
             continue
 
         path_info = PathInfo(
             path,
-            group_transform,
+            ' '.join(group_transform) if len(group_transform) > 0 else None,
             style_attributes=style_attributes,
             ellipse_approx_lvl=ellipse_approx_lvl,
             bezier_3_approx_lvl=bezier_3_approx_lvl,
@@ -93,4 +97,4 @@ def read_svg(
 
         res_for_class.close()
 
-    print(f'Done! Check the result at /{path_to_res} directory')
+    print(f'Done! Check the result at {path_to_res}')

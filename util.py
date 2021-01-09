@@ -2,6 +2,7 @@ import numpy
 import math
 
 from point import Point
+from constants import SMALL, LARGE
 
 
 def get_info_part(path_string, field_to_search):
@@ -43,7 +44,49 @@ def get_bias_for_point(x, y, cos, cos2, sin, den):
     return [b1, b2]
 
 
+def solve_quadratic_equation(a, b, c):
+    discriminant = b ** 2 - 4 * a * c
+    sqrt_d = numpy.sqrt(discriminant)
+    dbl_a = a * 2
+
+    y1 = (-b + sqrt_d) / dbl_a
+    y2 = (-b - sqrt_d) / dbl_a
+
+    return [y1, y2]
+
+
+def connect_x_y(y, k_xy, b_xy):
+    x1 = k_xy * y[0] + b_xy
+    x2 = k_xy * y[1] + b_xy
+
+    return [[x1, y[0]], [x2, y[1]]]
+
+
 def get_ellipse_center(rx, ry, xs, ys, xe, ye, a_deg):
+    rx2 = rx ** 2
+    ry2 = ry ** 2
+
+    if a_deg == 0:
+        left_k = 2 * ry2 * (xs - xe)
+
+        if left_k != 0:
+            b_xy = (ry2 * (xs ** 2 - xe ** 2) + rx2 * (ys ** 2 - ye ** 2)) / left_k
+            k_xy = -2 * rx2 * (ys - ye) / left_k
+
+            a = ry2 * k_xy ** 2 + rx2
+            b = -2 * ((xs - b_xy) * k_xy * ry2 + rx2 * ys)
+            c = ry2 * (xs - b_xy) ** 2 + rx2 * ys ** 2 - rx2 * ry2
+
+            return connect_x_y(solve_quadratic_equation(a, b, c), k_xy, b_xy)
+
+        yc = (ys + ye) / 2
+
+        a = 1 / rx2
+        b = -2 * xs / rx2
+        c = xs ** 2 / rx2 + (ys - yc) ** 2 / ry2 - 1
+
+        return [[res_x, yc] for res_x in solve_quadratic_equation(a, b, c)]
+
     a = math.radians(a_deg)
     sin = numpy.sin(a)
     cos = numpy.cos(a)
@@ -60,8 +103,6 @@ def get_ellipse_center(rx, ry, xs, ys, xe, ye, a_deg):
 
     bd1 = bs1 - be1
     bd2 = bs2 - be2
-    rx2 = rx ** 2
-    ry2 = ry ** 2
 
     ry_b1 = ry2 * bd1
     rx_b2 = rx2 * bd2
@@ -83,17 +124,7 @@ def get_ellipse_center(rx, ry, xs, ys, xe, ye, a_deg):
     b_q = 2 * (ry2 * k_q1 * b_q1 + rx2 * k_q2 * b_q2)
     c_q = ry2 * b_q1 ** 2 + rx2 * b_q2 ** 2 - rx2 * ry2
 
-    discriminant = b_q ** 2 - 4 * a_q * c_q
-    sqrt_d = numpy.sqrt(discriminant)
-    a_q2 = 2 * a_q
-
-    yc_1 = (-b_q + sqrt_d) / a_q2
-    yc_2 = (-b_q - sqrt_d) / a_q2
-
-    xc_1 = k_xy * yc_1 + b_xy
-    xc_2 = k_xy * yc_2 + b_xy
-
-    return [[xc_1, yc_1], [xc_2, yc_2]]
+    return connect_x_y(solve_quadratic_equation(a_q, b_q, c_q), k_xy, b_xy)
 
 
 def get_ellipse_points(rx, ry, cx, cy, ellipse_approx_lvl):
@@ -104,21 +135,187 @@ def get_ellipse_points(rx, ry, cx, cy, ellipse_approx_lvl):
     bottom_part = [-y for y in top_part]
 
     res.append(Point(-rx + cx, cy))
-    res.extend([Point(breakpoints[i1] + cx, top_part[i1] + cy) for i1 in
+    res.extend([Point(breakpoints[i] + cx, top_part[i] + cy) for i in
                 range(1, ellipse_approx_lvl - 1)])
 
     res.append(Point(cx, ry + cy))
-    res.extend([Point(breakpoints[i2] + cx, top_part[i2] + cy) for i2 in
+    res.extend([Point(breakpoints[i] + cx, top_part[i] + cy) for i in
                 range(ellipse_approx_lvl, ellipse_approx_lvl * 2 - 2)])
 
     res.append(Point(rx + cx, cy))
-    res.extend([Point(breakpoints[i3] + cx, bottom_part[i3] + cy) for i3 in
+    res.extend([Point(breakpoints[i] + cx, bottom_part[i] + cy) for i in
                 range(ellipse_approx_lvl * 2 - 3, ellipse_approx_lvl - 1, -1)])
 
     res.append(Point(cx, -ry + cy))
-    res.extend([Point(breakpoints[i4] + cx, bottom_part[i4] + cy) for i4 in
+    res.extend([Point(breakpoints[i] + cx, bottom_part[i] + cy) for i in
                 range(ellipse_approx_lvl - 2, 0, -1)])
 
     res.append(Point(-rx + cx, cy))
 
     return res
+
+
+def get_angle(a, b, c):  # Find an angle opposite to side A
+    cos = (b ** 2 + c ** 2 - a ** 2) / (2 * b * c)
+    return numpy.arccos(cos)
+
+
+def get_projection(projection_subject, projection_target):
+    xs1 = projection_subject[0].x
+    ys1 = projection_subject[0].y
+
+    xs2 = projection_subject[1].x
+    ys2 = projection_subject[1].y
+
+    xt1 = projection_target[0].x
+    yt1 = projection_target[0].y
+
+    xt2 = projection_target[1].x
+    yt2 = projection_target[1].y
+
+    ks = (ys1 - ys2) / (xs1 - xs2)
+    bs = ys1 - ks * xs1
+
+    kt = (yt1 - yt2) / (xt1 - xt2)
+    bt = yt1 - kt * xt1
+
+    xp = (bs - bt) / (kt - ks)
+    yp = kt * xp + bt
+
+    return Point(xp, yp)
+
+
+def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
+    dist_start_end = end_point.distance(start_point)
+    radius_start = center_point.distance(start_point)
+    radius_end = center_point.distance(end_point)
+
+    angle_start_end = get_angle(dist_start_end, radius_end, radius_start)
+
+    large_arc = []
+    small_arc = []
+
+    passed_breakpoints = 0
+    insertion_idx = 0
+
+    ends_at_start_point = None
+
+    start_is_passed = False
+    end_is_passed = False
+
+    for pt_idx in range(len(ellipse_points) - 1):
+        next_point = ellipse_points[pt_idx + 1]
+        current_point = ellipse_points[pt_idx]
+
+        current_is_end = current_point == end_point
+        current_is_start = current_point == start_point
+        next_is_end = next_point == end_point
+        next_is_start = next_point == start_point
+
+        # Check whether the current point is in small or large arc
+        projection_of_current = get_projection([center_point, current_point], [start_point, end_point])
+        current_is_in_small = 
+
+
+        current_radius = center_point.distance(current_point)
+        distance_current_start = current_point.distance(start_point)
+        distance_current_end = current_point.distance(end_point)
+
+        angle_current_start = get_angle(distance_current_start, current_radius, radius_start)
+        angle_current_end = get_angle(distance_current_end, current_radius, radius_end)
+
+        current_is_in_small = angle_current_start + angle_current_end <= angle_start_end
+
+        if current_is_in_small:
+            if passed_breakpoints == 2:
+                small_arc.insert(insertion_idx, current_point)
+                insertion_idx += 1
+            else:
+                small_arc.append(current_point)
+        else:
+            if passed_breakpoints == 2:
+                large_arc.insert(insertion_idx, current_point)
+                insertion_idx += 1
+            else:
+                large_arc.append(current_point)
+
+        # Check whether start or end points are between the current and next ellipse points
+        next_radius = center_point.distance(next_point)
+        distance_next_start = next_point.distance(start_point)
+        distance_next_end = next_point.distance(end_point)
+
+        angle_next_start = get_angle(distance_next_start, next_radius, radius_start)
+        angle_next_end = get_angle(distance_next_end, next_radius, radius_end)
+
+        distance_current_next = current_point.distance(next_point)
+        angle_current_next = get_angle(distance_current_next, current_radius, next_radius)
+
+        start_is_between = angle_current_start + angle_next_start <= angle_current_next
+        end_is_between = angle_current_end + angle_next_end <= angle_current_next
+
+        # Check whether next point is in small or large arc
+        next_is_in_small = angle_next_start + angle_next_end <= angle_start_end
+
+        if (start_is_between or current_is_start) and not start_is_passed:
+            passed_breakpoints += 1
+            start_is_passed = True
+
+        if (end_is_between or current_is_end) and not end_is_passed:
+            passed_breakpoints += 1
+            end_is_passed = True
+
+        print(f'Point index: {pt_idx}')
+        print(f'angle_current_next: {angle_current_next}')
+
+        print(f'angle_current_start: {angle_current_start}, angle_next_start: {angle_next_start}, sum: {angle_current_start + angle_next_start}')
+        print(f'angle_current_end: {angle_current_end}, angle_next_end: {angle_next_end}, sum: {angle_current_end + angle_next_end}')
+
+        print(f'start_is_between: {start_is_between}, end_is_between:'
+              f' {end_is_between}, passed_breakpoints: {passed_breakpoints}')
+        print(f'current == start: {current_point == start_point}, current == end: {current_point == end_point}')
+        print(f'next == start: {next_point == start_point}, next == end: {next_point == end_point}')
+
+        print(f'current_is_in_small: {current_is_in_small}, next_is_in_small: {next_is_in_small}')
+        print('_________________________________________________________')
+
+        # The large arc cannot contain no points due to the way the ellipse approximation is calculated
+        if start_is_between and end_is_between or \
+                current_is_start and next_is_end or \
+                current_is_end and next_is_start:
+            start_is_nearer_to_current = angle_current_start < angle_next_start
+            end_is_nearer_to_current = angle_current_end < angle_next_end
+
+            if start_is_nearer_to_current:
+                ends_at_start_point = LARGE
+            elif end_is_nearer_to_current:
+                ends_at_start_point = SMALL
+            else:  # If the start point is exactly between the current and next, but the end point is nearer to next
+                ends_at_start_point = LARGE
+        elif current_is_end:
+            ends_at_start_point = SMALL if next_is_in_small else LARGE
+        elif current_is_start:
+            ends_at_start_point = LARGE if next_is_in_small else SMALL
+        elif next_is_end:
+            ends_at_start_point = LARGE if current_is_in_small else SMALL
+        elif next_is_start:
+            ends_at_start_point = SMALL if current_is_in_small else LARGE
+        elif start_is_between:
+            ends_at_start_point = SMALL if current_is_in_small else LARGE
+        elif end_is_between:
+            ends_at_start_point = LARGE if current_is_in_small else SMALL
+
+    print('FINISHED ELLIPSE')
+
+    if ends_at_start_point == LARGE:
+        large_arc.reverse()
+    else:
+        small_arc.reverse()
+
+    if len(small_arc) == 0 or small_arc[-1] != end_point:
+        small_arc.append(end_point)
+
+    if large_arc[-1] != end_point:
+        large_arc.append(end_point)
+
+    # The arc that originally ended at start point is always the non-sweep one
+    return [small_arc, large_arc, ends_at_start_point]

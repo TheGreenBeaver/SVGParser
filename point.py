@@ -15,3 +15,12 @@ class Point(object):
 
     def distance(self, other):
         return numpy.sqrt((other.x - self.x) ** 2 + (other.y - self.y) ** 2)
+
+    def is_between(self, other1, other2):
+        v1 = other1.x <= self.x <= other2.x
+        v2 = other1.x >= self.x >= other2.x
+
+        v3 = other1.y <= self.y <= other2.y
+        v4 = other1.y >= self.y >= other2.y
+
+        return v1 or v2 or v3 or v4
