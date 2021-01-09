@@ -83,7 +83,6 @@ class Transform(object):
 
         point_copy = copy.copy(point)
         for transform_idx in range(len(self.transform_types)):
-            print(f'Applying transformation # {transform_idx}')
             transform_type = self.transform_types[transform_idx]
             transform_value = self.transform_values[transform_idx]
             [x, y] = {

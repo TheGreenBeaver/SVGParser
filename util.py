@@ -203,17 +203,9 @@ def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
 
     ends_at_start_point = None
 
-    start_is_passed = False
-    end_is_passed = False
-
     for pt_idx in range(len(ellipse_points) - 1):
-        next_point = ellipse_points[pt_idx + 1]
-        current_point = ellipse_points[pt_idx]
 
-        current_is_end = current_point == end_point
-        current_is_start = current_point == start_point
-        next_is_end = next_point == end_point
-        next_is_start = next_point == start_point
+        current_point = ellipse_points[pt_idx]
 
         # Check whether the current point is in small or large arc
         projection_of_current = get_projection([center_point, current_point], [start_point, end_point])
@@ -234,6 +226,18 @@ def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
             else:
                 large_arc.append(current_point)
 
+        if passed_breakpoints == 2:
+            continue
+
+        # --- --- --- ---
+
+        next_point = ellipse_points[pt_idx + 1]
+
+        current_is_end = current_point == end_point
+        current_is_start = current_point == start_point
+        next_is_end = next_point == end_point
+        next_is_start = next_point == start_point
+
         # Check whether start or end points are between the current and next ellipse points
         projection_of_start = get_projection([center_point, start_point], [current_point, next_point])
         projection_of_end = get_projection([center_point, end_point], [current_point, next_point])
@@ -251,23 +255,18 @@ def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
             projection_of_next.is_between(start_point, end_point) and \
             projection_of_next.is_between(center_point, next_point)
 
-        if (start_is_between or current_is_start) and not start_is_passed:
+        trespass_confirmed = current_is_in_small != next_is_in_small
+
+        if start_is_between and trespass_confirmed or current_is_start:
             passed_breakpoints += 1
-            start_is_passed = True
 
-        if (end_is_between or current_is_end) and not end_is_passed:
+        if end_is_between and trespass_confirmed or current_is_end:
             passed_breakpoints += 1
-            end_is_passed = True
 
-        print(f'Point index: {pt_idx}')
+        if ends_at_start_point is not None:
+            continue
 
-        print(f'start_is_between: {start_is_between}, end_is_between:'
-              f' {end_is_between}, passed_breakpoints: {passed_breakpoints}')
-        print(f'current == start: {current_point == start_point}, current == end: {current_point == end_point}')
-        print(f'next == start: {next_point == start_point}, next == end: {next_point == end_point}')
-
-        print(f'current_is_in_small: {current_is_in_small}, next_is_in_small: {next_is_in_small}')
-        print('_________________________________________________________')
+        # --- --- --- ---
 
         # The large arc cannot contain no points due to the way the ellipse approximation is calculated
         if start_is_between and end_is_between or \
@@ -290,12 +289,10 @@ def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
             ends_at_start_point = LARGE if current_is_in_small else SMALL
         elif next_is_start:
             ends_at_start_point = SMALL if current_is_in_small else LARGE
-        elif start_is_between:
+        elif start_is_between and trespass_confirmed:
             ends_at_start_point = SMALL if current_is_in_small else LARGE
-        elif end_is_between:
+        elif end_is_between and trespass_confirmed:
             ends_at_start_point = LARGE if current_is_in_small else SMALL
-
-    print('FINISHED ELLIPSE')
 
     if ends_at_start_point == LARGE:
         large_arc.reverse()

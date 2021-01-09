@@ -23,4 +23,4 @@ class Point(object):
         v3 = other1.y <= self.y <= other2.y
         v4 = other1.y >= self.y >= other2.y
 
-        return v1 or v2 or v3 or v4
+        return (v1 or v2) and (v3 or v4)

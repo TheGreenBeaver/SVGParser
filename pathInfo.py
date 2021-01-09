@@ -202,17 +202,17 @@ class PathInfo(object):
                 ellipse2 = ellipse2_raw
 
             center_pt1 = Point(xc1, yc1)
-            [small_arc1, large_arc1, non_sweep_arc1] = get_ellipse_arcs(ellipse1, center_pt1, self.ended_on, end_pt)
+            [small_arc1, large_arc1, sweep_arc1] = get_ellipse_arcs(ellipse1, center_pt1, self.ended_on, end_pt)
 
             center_pt2 = Point(xc2, yc2)
-            [small_arc2, large_arc2, non_sweep_arc2] = get_ellipse_arcs(ellipse2, center_pt2, self.ended_on, end_pt)
+            [small_arc2, large_arc2, sweep_arc2] = get_ellipse_arcs(ellipse2, center_pt2, self.ended_on, end_pt)
 
             # Sweep goes for positive angles (clockwise), reverse goes for negative ones (counter-clockwise)
-            small_sweep = copy.deepcopy(small_arc1 if non_sweep_arc1 != SMALL else small_arc2)
-            large_sweep = copy.deepcopy(large_arc1 if non_sweep_arc1 != LARGE else large_arc2)
+            small_sweep = copy.deepcopy(small_arc1 if sweep_arc1 == SMALL else small_arc2)
+            large_sweep = copy.deepcopy(large_arc1 if sweep_arc1 == LARGE else large_arc2)
 
-            small_reverse = copy.deepcopy(small_arc2 if non_sweep_arc2 == SMALL else small_arc1)
-            large_reverse = copy.deepcopy(large_arc2 if non_sweep_arc2 == LARGE else large_arc1)
+            small_reverse = copy.deepcopy(small_arc2 if sweep_arc2 != SMALL else small_arc1)
+            large_reverse = copy.deepcopy(large_arc2 if sweep_arc2 != LARGE else large_arc1)
 
             self.points.extend({
                 '00': small_reverse,

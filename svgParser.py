@@ -80,6 +80,10 @@ def read_svg(
     if not os.path.exists(path_to_res):
         os.makedirs(path_to_res)
 
+    x_spread = max_x - min(min_x, 0)
+    y_spread = max_y - min(min_y, 0)
+    aspect = max(x_spread, y_spread)
+
     class_index = 0
     for k in res.keys():  # Each key stands for a group of arrays containing points of the figures of the same class
         res_for_class = open(f'{path_to_res}/{class_index}.txt', 'w')
@@ -95,10 +99,9 @@ def read_svg(
                 if fig_point is not None:
                     if bottom_left:
                         fig_point.y = max_y - fig_point.y
+                        if min_x < 0:
+                            fig_point.x -= min_x
                     if normalize:
-                        x_spread = max_x - min(min_x, 0)
-                        y_spread = max_y - min(min_y, 0)
-                        aspect = max(x_spread, y_spread)
                         fig_point.y /= aspect
                         fig_point.x /= aspect
 

@@ -42,5 +42,5 @@ if bezier_2_approx_lvl < 1 or bezier_3_approx_lvl < 1:
     args_ok = False
 
 if args_ok:
-    read_svg(args.in_file, args.out_dir, args.bottom_left, args.normalize, args.style_attributes,
-             args.ellipse_approx_lvl, args.bezier_3_approx_lvl, args.bezier_2_approx_lvl)
+    read_svg(args.in_file, args.out_dir, args.bottom_left, args.normalize, style_attributes, ellipse_approx_lvl,
+             bezier_3_approx_lvl, bezier_2_approx_lvl)
