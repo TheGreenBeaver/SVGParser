@@ -33,6 +33,8 @@ def read_svg(
     group_transform = []
     max_y = None
     max_x = None
+    min_y = None
+    min_x = None
 
     for path in paths:
         if path.startswith('g'):
@@ -53,12 +55,20 @@ def read_svg(
         )
         n_max_y = path_info.max_y
         n_max_x = path_info.max_x
+        n_min_y = path_info.min_y
+        n_min_x = path_info.min_x
 
         if max_y is None or n_max_y is not None and max_y < n_max_y:
             max_y = n_max_y
 
         if max_x is None or n_max_x is not None and max_x < n_max_x:
             max_x = n_max_x
+
+        if min_y is None or n_min_y is not None and min_y > n_min_y:
+            min_y = n_min_y
+
+        if min_x is None or n_min_x is not None and min_x > n_min_x:
+            min_x = n_min_x
 
         if len(path_info.points) > 0:
             key = path_info.style
@@ -86,7 +96,9 @@ def read_svg(
                     if bottom_left:
                         fig_point.y = max_y - fig_point.y
                     if normalize:
-                        aspect = max(max_x, max_y)
+                        x_spread = max_x - min(min_x, 0)
+                        y_spread = max_y - min(min_y, 0)
+                        aspect = max(x_spread, y_spread)
                         fig_point.y /= aspect
                         fig_point.x /= aspect
 

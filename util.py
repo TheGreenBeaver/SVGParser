@@ -173,25 +173,28 @@ def get_projection(projection_subject, projection_target):
     xt2 = projection_target[1].x
     yt2 = projection_target[1].y
 
-    ks = (ys1 - ys2) / (xs1 - xs2)
-    bs = ys1 - ks * xs1
+    ks = (ys1 - ys2) / (xs1 - xs2) if xs1 != xs2 else None
+    bs = ys1 - ks * xs1 if ks is not None else None
 
-    kt = (yt1 - yt2) / (xt1 - xt2)
-    bt = yt1 - kt * xt1
+    kt = (yt1 - yt2) / (xt1 - xt2) if xt1 != xt2 else None
+    bt = yt1 - kt * xt1 if kt is not None else None
 
-    xp = (bs - bt) / (kt - ks)
-    yp = kt * xp + bt
+    if ks == kt:
+        return None
+
+    if ks is None:
+        xp = xs1
+    elif kt is None:
+        xp = xt1
+    else:
+        xp = (bs - bt) / (kt - ks)
+
+    yp = kt * xp + bt if kt is not None else ks * xp + bs
 
     return Point(xp, yp)
 
 
 def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
-    dist_start_end = end_point.distance(start_point)
-    radius_start = center_point.distance(start_point)
-    radius_end = center_point.distance(end_point)
-
-    angle_start_end = get_angle(dist_start_end, radius_end, radius_start)
-
     large_arc = []
     small_arc = []
 
@@ -214,17 +217,9 @@ def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
 
         # Check whether the current point is in small or large arc
         projection_of_current = get_projection([center_point, current_point], [start_point, end_point])
-        current_is_in_small = 
-
-
-        current_radius = center_point.distance(current_point)
-        distance_current_start = current_point.distance(start_point)
-        distance_current_end = current_point.distance(end_point)
-
-        angle_current_start = get_angle(distance_current_start, current_radius, radius_start)
-        angle_current_end = get_angle(distance_current_end, current_radius, radius_end)
-
-        current_is_in_small = angle_current_start + angle_current_end <= angle_start_end
+        current_is_in_small = projection_of_current is not None and \
+            projection_of_current.is_between(end_point, start_point) and \
+            projection_of_current.is_between(center_point, current_point)
 
         if current_is_in_small:
             if passed_breakpoints == 2:
@@ -240,21 +235,21 @@ def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
                 large_arc.append(current_point)
 
         # Check whether start or end points are between the current and next ellipse points
-        next_radius = center_point.distance(next_point)
-        distance_next_start = next_point.distance(start_point)
-        distance_next_end = next_point.distance(end_point)
+        projection_of_start = get_projection([center_point, start_point], [current_point, next_point])
+        projection_of_end = get_projection([center_point, end_point], [current_point, next_point])
 
-        angle_next_start = get_angle(distance_next_start, next_radius, radius_start)
-        angle_next_end = get_angle(distance_next_end, next_radius, radius_end)
-
-        distance_current_next = current_point.distance(next_point)
-        angle_current_next = get_angle(distance_current_next, current_radius, next_radius)
-
-        start_is_between = angle_current_start + angle_next_start <= angle_current_next
-        end_is_between = angle_current_end + angle_next_end <= angle_current_next
+        start_is_between = projection_of_start is not None and \
+            projection_of_start.is_between(next_point, current_point) and \
+            projection_of_start.is_between(center_point, start_point)
+        end_is_between = projection_of_end is not None and \
+            projection_of_end.is_between(next_point, current_point) and \
+            projection_of_end.is_between(center_point, end_point)
 
         # Check whether next point is in small or large arc
-        next_is_in_small = angle_next_start + angle_next_end <= angle_start_end
+        projection_of_next = get_projection([center_point, next_point], [start_point, end_point])
+        next_is_in_small = projection_of_next is not None and \
+            projection_of_next.is_between(start_point, end_point) and \
+            projection_of_next.is_between(center_point, next_point)
 
         if (start_is_between or current_is_start) and not start_is_passed:
             passed_breakpoints += 1
@@ -265,10 +260,6 @@ def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
             end_is_passed = True
 
         print(f'Point index: {pt_idx}')
-        print(f'angle_current_next: {angle_current_next}')
-
-        print(f'angle_current_start: {angle_current_start}, angle_next_start: {angle_next_start}, sum: {angle_current_start + angle_next_start}')
-        print(f'angle_current_end: {angle_current_end}, angle_next_end: {angle_next_end}, sum: {angle_current_end + angle_next_end}')
 
         print(f'start_is_between: {start_is_between}, end_is_between:'
               f' {end_is_between}, passed_breakpoints: {passed_breakpoints}')
@@ -282,8 +273,8 @@ def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
         if start_is_between and end_is_between or \
                 current_is_start and next_is_end or \
                 current_is_end and next_is_start:
-            start_is_nearer_to_current = angle_current_start < angle_next_start
-            end_is_nearer_to_current = angle_current_end < angle_next_end
+            start_is_nearer_to_current = current_point.distance(start_point) < next_point.distance(start_point)
+            end_is_nearer_to_current = current_point.distance(end_point) < next_point.distance(end_point)
 
             if start_is_nearer_to_current:
                 ends_at_start_point = LARGE

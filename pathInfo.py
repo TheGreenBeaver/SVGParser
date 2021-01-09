@@ -26,6 +26,8 @@ class PathInfo(object):
         self.return_after_z = Point()
         self.max_y = None
         self.max_x = None
+        self.min_x = None
+        self.min_y = None
         self.not_implemented = False
         self.path_id = get_info_part(path_string, 'id')
         self.style = self.parse_style(get_info_part(path_string, 'style'), style_attributes)
@@ -66,6 +68,12 @@ class PathInfo(object):
 
                 if self.max_x is None or self.max_x < transformed_pt.x:
                     self.max_x = transformed_pt.x
+
+                if self.min_y is None or self.min_y > transformed_pt.y:
+                    self.min_y = transformed_pt.y
+
+                if self.min_x is None or self.min_x > transformed_pt.x:
+                    self.min_x = transformed_pt.x
 
     @staticmethod
     def parse_style(style_string, style_attributes):
@@ -115,6 +123,8 @@ class PathInfo(object):
         self.points = []
         self.max_y = None
         self.max_x = None
+        self.min_x = None
+        self.min_y = None
         print_oops(reason, self.path_id)
 
     def append_point(self, x, y, relative=False, move=False):
