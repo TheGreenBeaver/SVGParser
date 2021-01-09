@@ -38,11 +38,14 @@ def read_svg(
 
     for path in paths:
         if path.startswith('g'):
-            group_transform.insert(0, get_info_part(path, 'transform'))
+            new_group_transform = get_info_part(path, 'transform')
+            if new_group_transform is not None:
+                group_transform.insert(0, new_group_transform)
             continue
 
         if path.startswith('/g'):
-            group_transform = group_transform[1:]
+            if len(group_transform) > 0:
+                group_transform = group_transform[1:]
             continue
 
         path_info = PathInfo(
