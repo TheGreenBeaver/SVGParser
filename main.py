@@ -1,6 +1,8 @@
 import argparse
+import time
 
 from svgParser import read_svg
+from svgParserMultiThread import read_svg_w_threads
 
 parser = argparse.ArgumentParser(description='An app to get a MatLab-readable list of vertices from an SVG')
 
@@ -22,6 +24,9 @@ parser.add_argument('--b3_approx', default=8, type=int, dest='bezier_3_approx_lv
 parser.add_argument('--b2_approx', default=8, type=int, dest='bezier_2_approx_lvl',
                     help='The amount of points to approximate the 2-order Bezier curves (default: 8)')
 
+parser.add_argument('--iter', type=int, dest='iterations_amount', default=1)
+parser.add_argument('--threads', action='store_true', dest='use_threads')
+
 args = parser.parse_args()
 args_ok = True
 
@@ -41,6 +46,35 @@ if bezier_2_approx_lvl < 1 or bezier_3_approx_lvl < 1:
     print('The bezier curve approximation level cannot be lower than 1')
     args_ok = False
 
+iterations_amount = args.iterations_amount
+if iterations_amount < 1:
+    print('Can\'t perform less than one iteration')
+    args_ok = False
+
+
+def test_iterations(func_to_use):
+    total_time = 0
+    for _ in range(iterations_amount):
+        start = time.perf_counter()
+        func_to_use(args.in_file, args.out_dir, args.bottom_left, args.normalize, style_attributes,
+                    ellipse_approx_lvl,
+                    bezier_3_approx_lvl, bezier_2_approx_lvl, False)
+        total_time += time.perf_counter() - start
+
+    return total_time / iterations_amount
+
+
+def single_launch(func_to_use):
+    func_to_use(args.in_file, args.out_dir, args.bottom_left, args.normalize, style_attributes,
+                ellipse_approx_lvl,
+                bezier_3_approx_lvl, bezier_2_approx_lvl)
+
+
 if args_ok:
-    read_svg(args.in_file, args.out_dir, args.bottom_left, args.normalize, style_attributes, ellipse_approx_lvl,
-             bezier_3_approx_lvl, bezier_2_approx_lvl)
+    func = read_svg_w_threads if args.use_threads else read_svg
+    if iterations_amount == 1:
+        single_launch(func)
+    else:
+        test_res = test_iterations(func)
+        s = '' if args.use_threads else 'out'
+        print(f'Average time spent with{s} thread usage: {test_res}')
