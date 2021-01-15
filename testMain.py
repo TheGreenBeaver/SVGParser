@@ -11,22 +11,24 @@ class MyTestCase(unittest.TestCase):
         ellipse_approx_lvl = 34
         bezier_3_approx_lvl = 32
         bezier_2_approx_lvl = 32
-        out_dir1 = 'test_result_no_threads'
-        out_dir2 = 'test_result_threads'
+        ideal = 'test_result_no_threads'
+        out_dir = 'test_result_threads'
 
-        read_svg(in_file, out_dir1, ellipse_approx_lvl=ellipse_approx_lvl, normalize=True, bottom_left=True,
-                 bezier_3_approx_lvl=bezier_3_approx_lvl, bezier_2_approx_lvl=bezier_2_approx_lvl)
-        read_svg(in_file, out_dir2, ellipse_approx_lvl=ellipse_approx_lvl, normalize=True, bottom_left=True,
-                 bezier_3_approx_lvl=bezier_3_approx_lvl, bezier_2_approx_lvl=bezier_2_approx_lvl,
-                 concurrency_type='pt')
+        read_svg(in_file, ideal, ellipse_approx_lvl=ellipse_approx_lvl, normalize=True, bottom_left=True,
+                 bezier_3_approx_lvl=bezier_3_approx_lvl, bezier_2_approx_lvl=bezier_2_approx_lvl, alert_done=False)
+        ideal_filenames = os.listdir(ideal)
 
-        res_filenames1 = os.listdir(out_dir1)
-        res_filenames2 = os.listdir(out_dir2)
+        for cc_type in ['st', 'ts', 'sp', 'ps', 'pp', 'pt', 'tp', 'tt']:
+            read_svg(in_file, out_dir, ellipse_approx_lvl=ellipse_approx_lvl, normalize=True, bottom_left=True,
+                     bezier_3_approx_lvl=bezier_3_approx_lvl, bezier_2_approx_lvl=bezier_2_approx_lvl,
+                     concurrency_type=cc_type, alert_done=False)
 
-        self.assertEqual(len(res_filenames1), len(res_filenames2))
+            res_filenames = os.listdir(out_dir)
 
-        for f_name in res_filenames1:
-            self.assertTrue(filecmp.cmpfiles(out_dir1, out_dir2, f_name, False))
+            self.assertEqual(len(res_filenames), len(ideal_filenames))
+
+            for f_name in res_filenames:
+                self.assertTrue(filecmp.cmpfiles(out_dir, ideal, f_name, False))
 
 
 if __name__ == '__main__':
