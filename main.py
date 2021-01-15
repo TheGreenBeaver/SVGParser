@@ -2,7 +2,6 @@ import argparse
 import time
 
 from svgParser import read_svg
-from svgParserMultiThread import read_svg_w_threads
 
 parser = argparse.ArgumentParser(description='An app to get a MatLab-readable list of vertices from an SVG')
 
@@ -24,8 +23,14 @@ parser.add_argument('--b3_approx', default=8, type=int, dest='bezier_3_approx_lv
 parser.add_argument('--b2_approx', default=8, type=int, dest='bezier_2_approx_lvl',
                     help='The amount of points to approximate the 2-order Bezier curves (default: 8)')
 
-parser.add_argument('--iter', type=int, dest='iterations_amount', default=1)
-parser.add_argument('--threads', action='store_true', dest='use_threads')
+parser.add_argument('--iter', type=int, dest='iterations_amount', default=1,
+                    help='Amount of iterations for benchmarking')
+parser.add_argument('--skip', type=int, dest='to_skip', default=0,
+                    help='Amount of iterations to skip at the start of benchmarking process')
+parser.add_argument('--cc_type', choices=['s', 'tt', 'tp', 'pt', 'pp'], dest='concurrency_type', default='s',
+                    help='Which approach to concurrency to use. s means run synchronously. t is for Threads,'
+                         ' p is for Processes, the letter in first position defines what to use for calculations,'
+                         ' the second one defines what to use when working with files')
 
 args = parser.parse_args()
 args_ok = True
@@ -47,34 +52,38 @@ if bezier_2_approx_lvl < 1 or bezier_3_approx_lvl < 1:
     args_ok = False
 
 iterations_amount = args.iterations_amount
+to_skip = args.to_skip
 if iterations_amount < 1:
     print('Can\'t perform less than one iteration')
     args_ok = False
 
+if to_skip >= iterations_amount:
+    print('All iterations will be skipped')
+    args_ok = False
 
-def test_iterations(func_to_use):
+
+def test_iterations():
     total_time = 0
-    for _ in range(iterations_amount):
+    for iter_idx in range(iterations_amount):
         start = time.perf_counter()
-        func_to_use(args.in_file, args.out_dir, args.bottom_left, args.normalize, style_attributes,
-                    ellipse_approx_lvl,
-                    bezier_3_approx_lvl, bezier_2_approx_lvl, False)
-        total_time += time.perf_counter() - start
+        read_svg(args.in_file, args.out_dir, args.bottom_left, args.normalize, style_attributes,
+                 ellipse_approx_lvl,
+                 bezier_3_approx_lvl, bezier_2_approx_lvl, args.concurrency_type, False)
+        if iter_idx > to_skip:
+            total_time += time.perf_counter() - start
 
     return total_time / iterations_amount
 
 
-def single_launch(func_to_use):
-    func_to_use(args.in_file, args.out_dir, args.bottom_left, args.normalize, style_attributes,
-                ellipse_approx_lvl,
-                bezier_3_approx_lvl, bezier_2_approx_lvl)
+def single_launch():
+    read_svg(args.in_file, args.out_dir, args.bottom_left, args.normalize, style_attributes,
+             ellipse_approx_lvl,
+             bezier_3_approx_lvl, bezier_2_approx_lvl, args.concurrency_type)
 
 
-if args_ok:
-    func = read_svg_w_threads if args.use_threads else read_svg
+if args_ok and __name__ == '__main__':
     if iterations_amount == 1:
-        single_launch(func)
+        single_launch()
     else:
-        test_res = test_iterations(func)
-        s = '' if args.use_threads else 'out'
-        print(f'Average time spent with{s} thread usage: {test_res}')
+        test_res = test_iterations()
+        print(f'Average time spent with concurrency_type = {args.concurrency_type}: {test_res}')

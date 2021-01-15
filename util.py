@@ -3,6 +3,7 @@ import math
 
 from point import Point
 from constants import SMALL, LARGE
+import concurrent.futures as cc
 
 
 def get_info_part(path_string, field_to_search):
@@ -307,3 +308,10 @@ def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
 
     # The arc that originally ended at start point is always the non-sweep one
     return [small_arc, large_arc, ends_at_start_point]
+
+
+def parse_concurrency_type(cc_type_str):
+    if cc_type_str == 's':
+        return None
+
+    return [cc.ThreadPoolExecutor() if lit == 't' else cc.ProcessPoolExecutor() for lit in cc_type_str]
