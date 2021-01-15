@@ -27,7 +27,8 @@ parser.add_argument('--iter', type=int, dest='iterations_amount', default=1,
                     help='Amount of iterations for benchmarking')
 parser.add_argument('--skip', type=int, dest='to_skip', default=0,
                     help='Amount of iterations to skip at the start of benchmarking process')
-parser.add_argument('--cc_type', choices=['s', 'tt', 'tp', 'pt', 'pp'], dest='concurrency_type', default='s',
+parser.add_argument('--cc_type', choices=['s', 'tt', 'tp', 'pt', 'pp', 'ps', 'sp', 'ts', 'st'],
+                    dest='concurrency_type', default='s',
                     help='Which approach to concurrency to use. s means run synchronously. t is for Threads,'
                          ' p is for Processes, the letter in first position defines what to use for calculations,'
                          ' the second one defines what to use when working with files')
@@ -72,7 +73,7 @@ def test_iterations():
         if iter_idx > to_skip:
             total_time += time.perf_counter() - start
 
-    return total_time / iterations_amount
+    return total_time / (iterations_amount - to_skip)
 
 
 def single_launch():

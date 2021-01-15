@@ -312,6 +312,10 @@ def get_ellipse_arcs(ellipse_points, center_point, start_point, end_point):
 
 def parse_concurrency_type(cc_type_str):
     if cc_type_str == 's':
-        return None
+        return [None, None]
 
-    return [cc.ThreadPoolExecutor() if lit == 't' else cc.ProcessPoolExecutor() for lit in cc_type_str]
+    return [{
+                's': None,
+                't': cc.ThreadPoolExecutor(),
+                'p': cc.ProcessPoolExecutor()
+            }[lit] for lit in cc_type_str]

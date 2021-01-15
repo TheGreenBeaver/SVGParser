@@ -20,7 +20,7 @@ def read_svg(
 
     paths = get_paths(path_to_file)
 
-    if cc is not None:
+    if cc[0] is not None:
         to_parse = []
         group_transform = []
         for path in paths:
@@ -47,8 +47,8 @@ def read_svg(
     else:
         paths_data = paths
 
-    [res, min_x, max_x, min_y, max_y] = process_paths(cc is not None, paths_data, style_attributes, ellipse_approx_lvl,
-                                                      bezier_3_approx_lvl, bezier_2_approx_lvl)
+    [res, min_x, max_x, min_y, max_y] = process_paths(cc[0] is not None, paths_data, style_attributes,
+                                                      ellipse_approx_lvl, bezier_3_approx_lvl, bezier_2_approx_lvl)
 
     write_result(max_x, min_x, max_y, min_y, res, path_to_res,
-                 bottom_left, normalize, cc[1] if cc else None, alert_done)
+                 bottom_left, normalize, cc[1], alert_done)
