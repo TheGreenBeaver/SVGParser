@@ -9,8 +9,8 @@ from util import get_info_part
 def read_svg(
         path_to_file,
         path_to_res,
-        bottom_left=True,
-        normalize=True,
+        bottom_left=False,
+        normalize=False,
         style_attributes=None,
         ellipse_approx_lvl=5,
         bezier_3_approx_lvl=8,

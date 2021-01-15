@@ -38,7 +38,8 @@ class PathInfo(object):
                 bezier_3_approx_lvl,
                 bezier_2_approx_lvl,
                 ellipse_approx_lvl),
-            path_string.startswith('ellipse'): lambda: self.process_ellipse(path_string, ellipse_approx_lvl)
+            path_string.startswith('ellipse'): lambda: self.process_ellipse(path_string, ellipse_approx_lvl),
+            path_string.startswith('circle'): lambda: self.process_ellipse(path_string, ellipse_approx_lvl, True)
         }[True]()
 
         full_transform = ''
@@ -95,6 +96,14 @@ class PathInfo(object):
         y = float(get_info_part(path_string, 'y'))
         height = float(get_info_part(path_string, 'height'))
         width = float(get_info_part(path_string, 'width'))
+
+        rx = get_info_part(path_string, 'rx')
+        ry = get_info_part(path_string, 'ry')
+
+        if (rx is not None or ry is not None) and (float(rx) or float(ry)):
+            self.oops('rounded corners for rectangles')
+            # TODO: Parse rounded corners for rectangles
+
         high_end = y + height
         right_end = x + width
 
@@ -106,13 +115,17 @@ class PathInfo(object):
             Point(x, y)
         ]
 
-    def process_ellipse(self, path_string, ellipse_approx_lvl):
-        rx = float(get_info_part(path_string, 'rx'))
-        ry = float(get_info_part(path_string, 'ry'))
+    def process_ellipse(self, path_string, ellipse_approx_lvl, is_circle=False):
         cx = float(get_info_part(path_string, 'cx'))
         cy = float(get_info_part(path_string, 'cy'))
 
-        self.points = get_ellipse_points(rx, ry, cx, cy, ellipse_approx_lvl)
+        if is_circle:
+            r = float(get_info_part(path_string, 'r'))
+            self.points = get_ellipse_points(r, r, cx, cy, ellipse_approx_lvl)
+        else:
+            rx = float(get_info_part(path_string, 'rx'))
+            ry = float(get_info_part(path_string, 'ry'))
+            self.points = get_ellipse_points(rx, ry, cx, cy, ellipse_approx_lvl)
 
     @staticmethod
     def get_pt_list(raw_list):
