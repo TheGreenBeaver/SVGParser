@@ -89,7 +89,10 @@ def read_svg(
 
     class_index = 0
     for k in res.keys():  # Each key stands for a group of arrays containing points of the figures of the same class
-        res_for_class = open(f'{path_to_res}/{class_index}.txt', 'w')
+        out_file_path = f'{path_to_res}/{class_index}.txt'
+        if os.path.exists(out_file_path):
+            os.remove(out_file_path)
+        res_for_class = open(out_file_path, 'w')
         class_index += 1
         all_figures_for_class = res[k]
         fig_amount = len(all_figures_for_class)
