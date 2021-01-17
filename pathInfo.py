@@ -32,14 +32,15 @@ class PathInfo(object):
         self.path_id = get_info_part(path_string, 'id')
         self.style = self.parse_style(get_info_part(path_string, 'style'), style_attributes)
         {
-            path_string.startswith('rect'): lambda: self.process_rect(path_string),
+            path_string.startswith('rect'): lambda: self.process_rect(path_string, ellipse_approx_lvl),
             path_string.startswith('path'): lambda: self.process_path(
                 path_string,
                 bezier_3_approx_lvl,
                 bezier_2_approx_lvl,
                 ellipse_approx_lvl),
             path_string.startswith('ellipse'): lambda: self.process_ellipse(path_string, ellipse_approx_lvl),
-            path_string.startswith('circle'): lambda: self.process_ellipse(path_string, ellipse_approx_lvl, True)
+            path_string.startswith('circle'): lambda: self.process_ellipse(path_string, ellipse_approx_lvl, True),
+            path_string.startswith('polygon'): lambda: self.process_simple_polygon(path_string)
         }[True]()
 
         full_transform = ''
@@ -91,29 +92,93 @@ class PathInfo(object):
 
         return ';'.join(res)
 
-    def process_rect(self, path_string):
-        x = float(get_info_part(path_string, 'x'))
-        y = float(get_info_part(path_string, 'y'))
+    def process_simple_polygon(self, path_string):
+        points = get_info_part(path_string, 'points')
+        spl_points = re.split(SPLIT_REGEX, points)
+        for i in range(0, len(spl_points), 2):
+            self.points.append(Point(float(spl_points[i]), float(spl_points[i + 1])))
+        self.points.append(Point(float(spl_points[0]), float(spl_points[1])))
+
+    @staticmethod
+    def clear_arc_overflow(border, arc, left_comparison, field):
+        pt_idx = 0
+        while pt_idx < len(arc):
+            pt = arc[pt_idx]
+            attr = pt.__getattribute__(field)
+            if left_comparison and attr < border or not left_comparison and attr > border:
+                del arc[pt_idx]
+            else:
+                pt_idx += 1
+
+    def process_rect(self, path_string, ellipse_approx_lvl):
+        x = float(get_info_part(path_string, ' x'))
+        y = float(get_info_part(path_string, ' y'))
         height = float(get_info_part(path_string, 'height'))
         width = float(get_info_part(path_string, 'width'))
 
         rx = get_info_part(path_string, 'rx')
         ry = get_info_part(path_string, 'ry')
 
-        if (rx is not None or ry is not None) and (float(rx) or float(ry)):
-            self.oops('rounded corners for rectangles')
-            # TODO: Parse rounded corners for rectangles
-
         high_end = y + height
         right_end = x + width
 
-        self.points = [
-            Point(x, y),
-            Point(right_end, y),
-            Point(right_end, high_end),
-            Point(x, high_end),
-            Point(x, y)
-        ]
+        rx_present = rx is not None and float(rx)
+        ry_present = ry is not None and float(ry)
+
+        if rx_present or ry_present:
+            ry_num = float(ry) if ry_present else float(rx)
+            rx_num = float(rx) if rx_present else float(ry)
+
+            y_overflow = 2 * ry_num > height
+            x_overflow = 2 * rx_num > width
+
+            mid_x = x + width / 2
+            mid_y = y + height / 2
+
+            corner_template = get_ellipse_points(rx_num, ry_num, 0, 0, ellipse_approx_lvl)
+            pts_in_arc = ellipse_approx_lvl - 1
+
+            left_cx = x + rx_num
+            right_cx = right_end - rx_num
+
+            upper_cy = y + ry_num
+            lower_cy = high_end - ry_num
+
+            ll_arc = [Point(t_pt.x + left_cx, t_pt.y + lower_cy) for t_pt in
+                      corner_template[0:pts_in_arc + 1]]
+            lr_arc = [Point(t_pt.x + right_cx, t_pt.y + lower_cy) for t_pt in
+                      corner_template[pts_in_arc:pts_in_arc * 2 + 1]]
+            ur_arc = [Point(t_pt.x + right_cx, t_pt.y + upper_cy) for t_pt in
+                      corner_template[pts_in_arc * 2:pts_in_arc * 3 + 1]]
+            ul_arc = [Point(t_pt.x + left_cx, t_pt.y + upper_cy) for t_pt in
+                      corner_template[pts_in_arc * 3:pts_in_arc * 4 + 1]]
+
+            arcs = [ll_arc, lr_arc, ur_arc, ul_arc]
+
+            if y_overflow:
+                for arc_idx in range(4):
+                    lower_part = arc_idx < 2
+                    self.clear_arc_overflow(mid_y, arcs[arc_idx], lower_part, 'y')
+
+            if x_overflow:
+                for arc_idx in range(4):
+                    right_part = 0 < arc_idx < 3
+                    self.clear_arc_overflow(mid_x, arcs[arc_idx], right_part, 'x')
+
+            self.points.extend(ll_arc)
+            self.points.extend(lr_arc)
+            self.points.extend(ur_arc)
+            self.points.extend(ul_arc)
+            self.points.append(copy.copy(ll_arc[0]))
+
+        else:
+            self.points = [
+                Point(x, y),
+                Point(right_end, y),
+                Point(right_end, high_end),
+                Point(x, high_end),
+                Point(x, y)
+            ]
 
     def process_ellipse(self, path_string, ellipse_approx_lvl, is_circle=False):
         cx = float(get_info_part(path_string, 'cx'))
