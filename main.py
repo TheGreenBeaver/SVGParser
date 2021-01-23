@@ -35,14 +35,10 @@ if len(style_attributes) == 0:
     args_ok = False
 
 ellipse_approx_lvl = args.ellipse_approx_lvl
-if ellipse_approx_lvl < 3:
-    print('The ellipse approximation level cannot be lower than 3')
-    args_ok = False
-
 bezier_3_approx_lvl = args.bezier_3_approx_lvl
 bezier_2_approx_lvl = args.bezier_2_approx_lvl
-if bezier_2_approx_lvl < 1 or bezier_3_approx_lvl < 1:
-    print('The bezier curve approximation level cannot be lower than 1')
+if ellipse_approx_lvl < 3 or bezier_2_approx_lvl < 3 or bezier_3_approx_lvl < 3:
+    print('The curve approximation level cannot be lower than 3')
     args_ok = False
 
 clip_distance = args.clip_distance
