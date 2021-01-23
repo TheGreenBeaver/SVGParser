@@ -174,36 +174,36 @@ def get_line_equation(pt_a, pt_b):
     return [k, b]
 
 
-def first_not_zero_idx(num, max_precision=8):
+def get_fixed_pt_rep(num, max_precision=8):
     format_str = '{0:.' + str(max_precision) + 'f}'
     str_num = format_str.format(num)
     after_point = str_num.split('.')[1]
     match = re.search(r'[^0]', after_point)
-    return match.span()[0] if match else 1
+    idx = match.span()[0] if match else 1
+    r = max(idx, 3) if max_precision >= 3 else idx
+    f_string = '{0:.' + str(r) + 'f}'
+    return f_string.format(num)
 
 
-def format_line_equation(pt_a, pt_b):
+def format_line_equation(pt_a, pt_b, eq_precision):
     xa = pt_a.x
     xb = pt_b.x
 
     if xa == xb:
-        return f'X = {xa}\n'
+        return f'x = {get_fixed_pt_rep(xa, eq_precision)}\n'
 
     [k_raw, b_raw] = get_line_equation(pt_a, pt_b)
 
-    r_k = first_not_zero_idx(k_raw)
-    r_b = first_not_zero_idx(b_raw)
+    k = get_fixed_pt_rep(k_raw, eq_precision)
+    b = get_fixed_pt_rep(b_raw, eq_precision)
 
-    k = round(k_raw, max(r_k, 3))
-    b = round(b_raw, max(r_b, 3))
-
-    if k == 0:
+    if float(k) == 0:
         return f'y = {b}\n'
 
-    if b == 0:
+    if float(b) == 0:
         return f'y = {k}x\n'
 
-    b_rep = f'+ {b}' if b > 0 else f'- {abs(b)}'
+    b_rep = f'+ {b}' if float(b) > 0 else f'- {b[1:]}'
 
     return f'y = {k}x {b_rep}\n'
 

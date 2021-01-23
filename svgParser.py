@@ -17,7 +17,8 @@ def read_svg(
         bezier_3_approx_lvl=8,
         bezier_2_approx_lvl=8,
         calc_lines=False,
-        clip_distance=0.001
+        clip_distance=0.001,
+        eq_precision=8
 ):
     if style_attributes is None:
         style_attributes = ['fill', 'stroke']
@@ -127,7 +128,7 @@ def read_svg(
                         fig_point.x /= aspect
 
                     if calc_lines and prev_point is not None:
-                        eq = format_line_equation(prev_point, fig_point)
+                        eq = format_line_equation(prev_point, fig_point, eq_precision)
                         equations_for_class.write(eq)
 
                 to_write = 'NaN,NaN;' if fig_point is None else str(fig_point)
