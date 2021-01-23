@@ -205,7 +205,7 @@ def format_line_equation(pt_a, pt_b):
 
     b_rep = f'+ {b}' if b > 0 else f'- {abs(b)}'
 
-    return f'y = {k}y {b_rep}\n'
+    return f'y = {k}x {b_rep}\n'
 
 
 def get_projection(projection_subject, projection_target):
