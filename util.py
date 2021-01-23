@@ -198,14 +198,14 @@ def format_line_equation(pt_a, pt_b):
     b = round(b_raw, max(r_b, 3))
 
     if k == 0:
-        return f'Y = {b}\n'
+        return f'y = {b}\n'
 
     if b == 0:
-        return f'Y = {k}X\n'
+        return f'y = {k}x\n'
 
     b_rep = f'+ {b}' if b > 0 else f'- {abs(b)}'
 
-    return f'Y = {k}X {b_rep}\n'
+    return f'y = {k}y {b_rep}\n'
 
 
 def get_projection(projection_subject, projection_target):

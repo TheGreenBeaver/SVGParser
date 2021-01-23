@@ -18,9 +18,9 @@ parser.add_argument('--style_attr', nargs='*', default=['fill', 'stroke'], dest=
 parser.add_argument('--ell_approx', default=5, type=int, dest='ellipse_approx_lvl',
                     help='The amount of points to be calculated for each arc of an ellipse (default: 5)')
 parser.add_argument('--b3_approx', default=8, type=int, dest='bezier_3_approx_lvl',
-                    help='The amount of points to approximate the 3-order Bezier curves (default: 8)')
+                    help='The amount of points to approximate the cubic Bezier curves (default: 8)')
 parser.add_argument('--b2_approx', default=8, type=int, dest='bezier_2_approx_lvl',
-                    help='The amount of points to approximate the 2-order Bezier curves (default: 8)')
+                    help='The amount of points to approximate the quadratic Bezier curves (default: 8)')
 parser.add_argument('--calc_ln', action='store_true', dest='calc_lines',
                     help='Calculate the equations for lines between points (not done by default)')
 parser.add_argument('--clip', default=0.001, type=float, dest='clip_distance',
