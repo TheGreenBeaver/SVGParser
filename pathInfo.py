@@ -17,7 +17,8 @@ class PathInfo(object):
             style_attributes=None,
             ellipse_approx_lvl=5,
             bezier_3_approx_lvl=8,
-            bezier_2_approx_lvl=8
+            bezier_2_approx_lvl=8,
+            clip_distance=0.0000000001
     ):
         if style_attributes is None:
             style_attributes = ['fill', 'stroke']
@@ -42,6 +43,15 @@ class PathInfo(object):
             path_string.startswith('circle'): lambda: self.process_ellipse(path_string, ellipse_approx_lvl, True),
             path_string.startswith('polygon'): lambda: self.process_simple_polygon(path_string)
         }[True]()
+
+        pt_idx = 1
+        while pt_idx < len(self.points):
+            pt = self.points[pt_idx]
+            prev_pt = self.points[pt_idx - 1]
+            if pt and prev_pt and pt.can_be_merged(prev_pt, clip_distance):
+                del self.points[pt_idx]
+            else:
+                pt_idx += 1
 
         full_transform = ''
 

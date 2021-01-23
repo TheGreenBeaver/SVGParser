@@ -13,6 +13,9 @@ class Point(object):
     def __eq__(self, other):
         return type(other) == Point and other.x == self.x and other.y == self.y
 
+    def can_be_merged(self, other, clip_distance):
+        return self.distance(other) <= clip_distance
+
     def distance(self, other):
         return numpy.sqrt((other.x - self.x) ** 2 + (other.y - self.y) ** 2)
 

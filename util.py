@@ -1,5 +1,6 @@
 import numpy
 import math
+import re
 
 from point import Point
 from constants import SMALL, LARGE
@@ -160,24 +161,59 @@ def get_angle(a, b, c):  # Find an angle opposite to side A
     return numpy.arccos(cos)
 
 
+def get_line_equation(pt_a, pt_b):
+    xa = pt_a.x
+    ya = pt_a.y
+
+    xb = pt_b.x
+    yb = pt_b.y
+
+    k = (ya - yb) / (xa - xb) if xa != xb else None
+    b = ya - k * xa if k is not None else None
+
+    return [k, b]
+
+
+def first_not_zero_idx(num, max_precision=8):
+    format_str = '{0:.' + str(max_precision) + 'f}'
+    str_num = format_str.format(num)
+    after_point = str_num.split('.')[1]
+    match = re.search(r'[^0]', after_point)
+    return match.span()[0] if match else 1
+
+
+def format_line_equation(pt_a, pt_b):
+    xa = pt_a.x
+    xb = pt_b.x
+
+    if xa == xb:
+        return f'X = {xa}\n'
+
+    [k_raw, b_raw] = get_line_equation(pt_a, pt_b)
+
+    r_k = first_not_zero_idx(k_raw)
+    r_b = first_not_zero_idx(b_raw)
+
+    k = round(k_raw, max(r_k, 3))
+    b = round(b_raw, max(r_b, 3))
+
+    if k == 0:
+        return f'Y = {b}\n'
+
+    if b == 0:
+        return f'Y = {k}X\n'
+
+    b_rep = f'+ {b}' if b > 0 else f'- {abs(b)}'
+
+    return f'Y = {k}X {b_rep}\n'
+
+
 def get_projection(projection_subject, projection_target):
     xs1 = projection_subject[0].x
-    ys1 = projection_subject[0].y
-
-    xs2 = projection_subject[1].x
-    ys2 = projection_subject[1].y
-
     xt1 = projection_target[0].x
-    yt1 = projection_target[0].y
 
-    xt2 = projection_target[1].x
-    yt2 = projection_target[1].y
-
-    ks = (ys1 - ys2) / (xs1 - xs2) if xs1 != xs2 else None
-    bs = ys1 - ks * xs1 if ks is not None else None
-
-    kt = (yt1 - yt2) / (xt1 - xt2) if xt1 != xt2 else None
-    bt = yt1 - kt * xt1 if kt is not None else None
+    [ks, bs] = get_line_equation(projection_subject[0], projection_subject[1])
+    [kt, bt] = get_line_equation(projection_target[0], projection_target[1])
 
     if ks == kt:
         return None

@@ -21,6 +21,10 @@ parser.add_argument('--b3_approx', default=8, type=int, dest='bezier_3_approx_lv
                     help='The amount of points to approximate the 3-order Bezier curves (default: 8)')
 parser.add_argument('--b2_approx', default=8, type=int, dest='bezier_2_approx_lvl',
                     help='The amount of points to approximate the 2-order Bezier curves (default: 8)')
+parser.add_argument('--calc_ln', action='store_true', dest='calc_lines',
+                    help='Calculate the equations for lines between points (not done by default)')
+parser.add_argument('--clip', default=0.001, type=float, dest='clip_distance',
+                    help='Max distance between non-normalized points for them to be merged (default: 0.001)')
 
 args = parser.parse_args()
 args_ok = True
@@ -41,6 +45,11 @@ if bezier_2_approx_lvl < 1 or bezier_3_approx_lvl < 1:
     print('The bezier curve approximation level cannot be lower than 1')
     args_ok = False
 
+clip_distance = args.clip_distance
+if clip_distance < 0:
+    print('Clip distance can\'t be lower than 0')
+    args_ok = False
+
 if args_ok:
     read_svg(args.in_file, args.out_dir, args.bottom_left, args.normalize, style_attributes, ellipse_approx_lvl,
-             bezier_3_approx_lvl, bezier_2_approx_lvl)
+             bezier_3_approx_lvl, bezier_2_approx_lvl, args.calc_lines, clip_distance)

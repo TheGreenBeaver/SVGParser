@@ -1,9 +1,10 @@
+import copy
 import os
 import re
 
 from constants import PATH_DELIMITERS_REGEX, MULTIPLE_WHITESPACE_REGEX
 from pathInfo import PathInfo
-from util import get_info_part
+from util import get_info_part, format_line_equation
 
 
 def read_svg(
@@ -14,7 +15,9 @@ def read_svg(
         style_attributes=None,
         ellipse_approx_lvl=5,
         bezier_3_approx_lvl=8,
-        bezier_2_approx_lvl=8
+        bezier_2_approx_lvl=8,
+        calc_lines=False,
+        clip_distance=0.001
 ):
     if style_attributes is None:
         style_attributes = ['fill', 'stroke']
@@ -54,7 +57,8 @@ def read_svg(
             style_attributes=style_attributes,
             ellipse_approx_lvl=ellipse_approx_lvl,
             bezier_3_approx_lvl=bezier_3_approx_lvl,
-            bezier_2_approx_lvl=bezier_2_approx_lvl
+            bezier_2_approx_lvl=bezier_2_approx_lvl,
+            clip_distance=clip_distance
         )
         n_max_y = path_info.max_y
         n_max_x = path_info.max_x
@@ -92,6 +96,14 @@ def read_svg(
         out_file_path = f'{path_to_res}/{class_index}.txt'
         if os.path.exists(out_file_path):
             os.remove(out_file_path)
+
+        equations_file_path = f'{path_to_res}/{class_index}_equations.txt'
+        equations_for_class = None
+        if calc_lines:
+            if os.path.exists(equations_file_path):
+                os.remove(equations_file_path)
+            equations_for_class = open(equations_file_path, 'w')
+
         res_for_class = open(out_file_path, 'w')
         class_index += 1
         all_figures_for_class = res[k]
@@ -100,7 +112,10 @@ def read_svg(
         for fig_index in range(fig_amount):
             single_fig = all_figures_for_class[fig_index]
 
-            for fig_point in single_fig:
+            prev_point = None
+            for fig_point_idx in range(len(single_fig)):
+
+                fig_point = single_fig[fig_point_idx]
 
                 if fig_point is not None:
                     if bottom_left:
@@ -111,11 +126,20 @@ def read_svg(
                         fig_point.y /= aspect
                         fig_point.x /= aspect
 
+                    if calc_lines and prev_point is not None:
+                        eq = format_line_equation(prev_point, fig_point)
+                        equations_for_class.write(eq)
+
                 to_write = 'NaN,NaN;' if fig_point is None else str(fig_point)
                 res_for_class.write(to_write)
+
+                prev_point = copy.copy(fig_point)
+
             if fig_amount > 1 and fig_index != fig_amount - 1 and len(single_fig) > 0:
                 res_for_class.write('NaN,NaN;')  # Put NaN between separate parts of the same class
 
         res_for_class.close()
+        if calc_lines:
+            equations_for_class.close()
 
     print(f'Done! Check the result at {path_to_res}')
